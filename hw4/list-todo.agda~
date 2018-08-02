@@ -1,0 +1,21 @@
+open import lib
+
+take : ∀{A : Set} → ℕ → 𝕃 A → 𝕃 A
+take zero x =  []
+take (suc n) [] = []
+take (suc n) ( x :: x') = x :: take  n x' 
+
+intersperse : ∀{A : Set} → A → 𝕃 A → 𝕃 A
+intersperse x []  = []
+intersperse x ( xs :: [] ) = [ x  ]
+intersperse x ( x' :: xs :: xss ) = x' :: x :: xs :: intersperse x ( xss)
+
+length-take : ∀{A : Set}(n : ℕ)(xs : 𝕃 A) → length (take n xs) ≤ n ≡ tt
+length-take zero x = refl
+length-take (suc n) [] = refl
+length-take (suc n) ( x :: xs) = {!!}
+
+
+length-intersperse : ∀{ A : Set } ( a : A) ( xs : 𝕃 A) → length( A) ≤ length( intersperse a  A) ≡ tt
+length-intersperse = {!!}
+

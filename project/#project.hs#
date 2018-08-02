@@ -1,0 +1,179 @@
+import Data.List
+import Text.Parsec
+import Text.Parsec.String
+import Text.Parsec.Token (lexeme, makeTokenParser, whiteSpace)
+import Text.Parsec.Language (emptyDef)
+
+-- Recognizes ints 
+prsInt :: Parser String
+prsInt =
+  do
+    x <- many1 $  oneOf "0123456789%+-/#$"
+    xs <- many space
+    return(x)
+
+-- Parses the start of sentences letter is tacked on to handle sentences that start
+-- with unicode chars without it it is a nightmare to deal with them
+startS :: Parser String
+startS =
+  do
+    xxs <- many prsInt
+    x <- oneOf "ABCDEFGHIJKLMNOPQRSTUVWXYZ()[]\"" <|> letter 
+    x' <- many letter 
+    xs <- many space
+    return (x:x'++xs)
+
+-- parser for words letter serves as a check against unicode here as well
+wordsP :: Parser String 
+wordsP =
+  do
+     x <- many1 $ oneOf "\\1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz[]():;,'-\"" <|> letter
+     xs <- many space
+     return (x )
+     
+-- eats words until a sentence ends
+eatWords =
+  do 
+    x <- many wordsP <|> many prsInt
+    -- xs <- many prsInt
+    let z = unwords x 
+    return z
+
+-- parser for sentences ( recognizes a valid sentence)
+sentence :: Parser String
+sentence =
+  do
+    -- a <- try many tab
+    x <- startS 
+    x' <- eatWords
+    xs <- many $  oneOf ".!?\""  
+    xss <- many space
+    return ( x++ x' ++ xs)
+
+-- much the same way that eat words eats valid words eat sentences
+-- eats valid sentences until it encounters a paragraph
+eatSentences :: Parser String
+eatSentences =
+  do
+    x <- many1 sentence
+    xs <- many newline 
+    xss <- many tab
+    let z  = unwords x
+    return (z++ xs)
+
+-- This could be effectively called eat paragraphs. It parses valid paragraphs
+-- until the end of the file is reached
+paragraphs :: Parser String
+paragraphs =
+  do
+    x <- many1 eatSentences 
+    xs <- eof
+    let z = unwords x
+    return z
+
+removeZero :: [Int] -> [Int]
+removeZero [] = []
+removeZero (x : [] ) = if x /= 0 then [x] else []
+removeZero (x : xs)  = if x/= 0 then x : removeZero(xs) else removeZero(xs)
+  
+prsInpt :: String -> Either ParseError String
+prsInpt s = parse paragraphs "" s
+
+countParas :: String -> [Int] 
+countParas input = map (length.words) (lines input)
+
+numParas :: String -> Int
+numParas i = length $  removeZero $ countParas i
+
+countWordH   :: Eq a => a -> [a] -> Int
+countWordH x =  length . Data.List.filter (==x)
+
+countWord1 :: String -> String -> Int
+countWord1 w t = countWordH t (words w)
+
+countLetters :: String -> Char -> Int
+countLetters str c = length $ Data.List.filter (== c) str
+
+countWord :: String -> String -> Int
+countWord str1 str2 = length $ Data.List.filter (== str2) [str1]
+
+countVowels :: String -> [[(Char, Int)]]
+countVowels txt =
+  do
+    let a = countLetters txt 'a'
+    let e = countLetters txt 'e'
+    let i = countLetters txt 'i'
+    let o = countLetters txt 'o'
+    let u = countLetters txt 'u'
+    return [ ('a', a) , ('e', e), ('i', i), ('o', o), ('u', u)]
+
+subsetReplace ::  String -> String -> String -> String
+subsetReplace [] tr r = []
+subsetReplace txt old new = loop txt
+  where
+    loop [] = []
+    loop str =
+      let (prefix, rest) = splitAt n str
+      in
+        if old == prefix then new ++ loop rest
+        else head str : loop (tail str)
+    n = length old
+
+-- filter helper    
+filterDoc' :: [String] -> String -> [String]
+filterDoc' (x : [] ) s = if  s == x then [] else [x]
+filterDoc' (x : xs) s = if s == x then filterDoc' xs s else x : filterDoc' xs s
+
+-- filter easier to do on lists than strings and then just return a string back
+filterDoc :: String -> String -> String
+filterDoc x xs = unwords $ filterDoc' (words x) xs
+
+-- word replace helper
+replaceDoc' :: [String] -> String -> String -> [String]
+replaceDoc' (x : [] ) s  s' = if  s == x then [] else [s']
+replaceDoc' (x : xs) s s' = if s == x then s' : replaceDoc' xs s s' else x : replaceDoc' xs s s'
+
+-- actual word replacer. It matches case because I want to preserve the case from the orignial
+-- document and that's hard to do if you lower first
+replaceDoc :: String -> String -> String -> String
+replaceDoc x xs xss = unwords $ replaceDoc'  (words x) xs xss
+                                                           
+ -- Main to run everything takes input from user                                                         
+main :: IO ()
+main =
+  do
+    input <- readFile "sl.txt"
+    let  (Right x)  = prsInpt input
+    let len = length x
+    let wrds = length (words x)
+    print "Replace substring:"
+    r <- getLine
+    print "With string"
+    q <- getLine
+    let z = subsetReplace x r q
+    print "Count char "
+    ch <- getLine
+    let c = countLetters x $ head ch
+    print c
+    print "Count word"
+    ch <- getLine
+    let w = countWord1 x ch
+    print w
+    print "Filter word"
+    ch <- getLine
+    let d = filterDoc z ch
+    print "Replace word"
+    r <- getLine
+    print "With word"
+    q <- getLine
+    let e = replaceDoc d r q
+    writeFile "changes.txt" e
+    print("Total chars")
+    print len
+    print("Total words")
+    print wrds
+    let nmP = numParas x
+    print ("Average words per paragraph (floor divison) ")
+    print ( quot wrds  nmP)
+    print("Vowel Count")
+    print $ head $ countVowels input

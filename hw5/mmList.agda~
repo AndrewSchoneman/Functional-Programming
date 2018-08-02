@@ -1,0 +1,17 @@
+open import lib
+
+data mmList (S : string) : Set where
+  mkMmList : ∀(ss : 𝕃 string)(b : 𝔹) → b ≡ list-member _=string_ S ss → mmList S
+
+mmList-member : ∀{S : string} → string → mmList S → 𝔹
+mmList-member = {!!}
+
+_::mmList_ : ∀{S : string} → string → mmList S → mmList S
+_::mmList_ = {!!} 
+
+_++mmList_ : ∀{S : string} → mmList S → mmList S → mmList S
+_++mmList_ = {!!}
+
+mmList-member++ : ∀{S : string}(s : string)(m1 m2 : mmList S) →
+                  mmList-member s (m1 ++mmList m2) ≡ (mmList-member s m1 || mmList-member s m2) 
+mmList-member++ = {!!}
